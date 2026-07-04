@@ -13,54 +13,95 @@ export default function LoadDetailPage() {
   const [rates, setRates] = useState([]);
   const [sales, setSales] = useState([]);
   const [rejectionsBySale, setRejectionsBySale] = useState({});
+  const [resalesByRejection, setResalesByRejection] = useState({});
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null);
+  const [error, setError] = useState("");
+
+  const loadData = async () => {
+    const { data: loadData } = await supabase
+      .from("loads")
+      .select("*, farmers(name, mobile_number, village)")
+      .eq("id", params.id)
+      .single();
+
+    const { data: rateData } = await supabase
+      .from("purchase_rates")
+      .select("*")
+      .eq("load_id", params.id)
+      .order("created_at");
+
+    const { data: salesData } = await supabase
+      .from("sales")
+      .select("*, buyers(name, market_name)")
+      .eq("load_id", params.id)
+      .order("created_at");
+
+    const saleIds = (salesData || []).map((s) => s.id);
+    let rejectionsData = [];
+    if (saleIds.length > 0) {
+      const { data } = await supabase
+        .from("rejections")
+        .select("*")
+        .in("sale_id", saleIds)
+        .order("created_at");
+      rejectionsData = data || [];
+    }
+
+    const rejectionIds = rejectionsData.map((r) => r.id);
+    let resalesData = [];
+    if (rejectionIds.length > 0) {
+      const { data } = await supabase
+        .from("resales")
+        .select("*, buyers(name, market_name)")
+        .in("rejection_id", rejectionIds)
+        .order("created_at");
+      resalesData = data || [];
+    }
+
+    const groupedRejections = {};
+    rejectionsData.forEach((r) => {
+      if (!groupedRejections[r.sale_id]) groupedRejections[r.sale_id] = [];
+      groupedRejections[r.sale_id].push(r);
+    });
+
+    const groupedResales = {};
+    resalesData.forEach((r) => {
+      if (!groupedResales[r.rejection_id]) groupedResales[r.rejection_id] = [];
+      groupedResales[r.rejection_id].push(r);
+    });
+
+    setLoad(loadData);
+    setRates(rateData || []);
+    setSales(salesData || []);
+    setRejectionsBySale(groupedRejections);
+    setResalesByRejection(groupedResales);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-      const { data: loadData } = await supabase
-        .from("loads")
-        .select("*, farmers(name, mobile_number, village)")
-        .eq("id", params.id)
-        .single();
-
-      const { data: rateData } = await supabase
-        .from("purchase_rates")
-        .select("*")
-        .eq("load_id", params.id)
-        .order("created_at");
-
-      const { data: salesData } = await supabase
-        .from("sales")
-        .select("*, buyers(name, market_name)")
-        .eq("load_id", params.id)
-        .order("created_at");
-
-      const saleIds = (salesData || []).map((s) => s.id);
-      let rejectionsData = [];
-      if (saleIds.length > 0) {
-        const { data } = await supabase
-          .from("rejections")
-          .select("*")
-          .in("sale_id", saleIds)
-          .order("created_at");
-        rejectionsData = data || [];
-      }
-
-      const grouped = {};
-      rejectionsData.forEach((r) => {
-        if (!grouped[r.sale_id]) grouped[r.sale_id] = [];
-        grouped[r.sale_id].push(r);
-      });
-
-      setLoad(loadData);
-      setRates(rateData || []);
-      setSales(salesData || []);
-      setRejectionsBySale(grouped);
-      setLoading(false);
-    };
-
     loadData();
   }, [params.id]);
+
+  const handleDiscard = async (rejectionId) => {
+    if (!confirm("Mark this rejection as discarded? This cannot be undone.")) return;
+    setActionLoading(rejectionId);
+    setError("");
+
+    const { error: updateError } = await supabase
+      .from("rejections")
+      .update({ status: "Discarded" })
+      .eq("id", rejectionId);
+
+    if (updateError) {
+      setError(updateError.message);
+      setActionLoading(null);
+      return;
+    }
+
+    await loadData();
+    setActionLoading(null);
+  };
 
   if (loading) {
     return (
@@ -85,7 +126,7 @@ export default function LoadDetailPage() {
   const statusColor = (status) => {
     if (status === "Resold") return { bg: "var(--color-success-bg)", text: "var(--color-success)" };
     if (status === "Discarded") return { bg: "var(--color-danger-bg)", text: "var(--color-danger)" };
-    return { bg: "var(--color-bg)", text: "var(--color-text-muted)" }; // Pending Resale
+    return { bg: "var(--color-bg)", text: "var(--color-text-muted)" };
   };
 
   return (
@@ -116,6 +157,15 @@ export default function LoadDetailPage() {
         <p className="text-[14px] mb-6" style={{ color: "var(--color-text-muted)" }}>
           {new Date(load.load_date).toLocaleDateString()} · {load.vehicle_number}
         </p>
+
+        {error && (
+          <p
+            className="text-[13px] rounded-2xl px-4 py-3 mb-5"
+            style={{ backgroundColor: "var(--color-danger-bg)", color: "var(--color-danger)" }}
+          >
+            {error}
+          </p>
+        )}
 
         <div
           className="rounded-2xl p-4 mb-5"
@@ -220,20 +270,57 @@ export default function LoadDetailPage() {
                   </div>
 
                   {saleRejections.length > 0 && (
-                    <div className="space-y-1.5 mb-2.5 pt-2.5" style={{ borderTop: "1px solid var(--color-border)" }}>
+                    <div className="space-y-2.5 mb-2.5 pt-2.5" style={{ borderTop: "1px solid var(--color-border)" }}>
                       {saleRejections.map((r) => {
                         const colors = statusColor(r.status);
+                        const resalesForThis = resalesByRejection[r.id] || [];
+
                         return (
-                          <div key={r.id} className="flex items-center justify-between">
-                            <span className="text-[12px]" style={{ color: "var(--color-text-muted)" }}>
-                              {r.rejected_quantity} kg rejected{r.reason ? ` · ${r.reason}` : ""}
-                            </span>
-                            <span
-                              className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
-                              style={{ backgroundColor: colors.bg, color: colors.text }}
-                            >
-                              {r.status}
-                            </span>
+                          <div key={r.id}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[12px]" style={{ color: "var(--color-text-muted)" }}>
+                                {r.rejected_quantity} kg rejected{r.reason ? ` · ${r.reason}` : ""}
+                              </span>
+                              <span
+                                className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                                style={{ backgroundColor: colors.bg, color: colors.text }}
+                              >
+                                {r.status}
+                              </span>
+                            </div>
+
+                            {resalesForThis.map((rs) => (
+                              <div
+                                key={rs.id}
+                                className="flex items-center justify-between text-[12px] mt-1"
+                                style={{ color: "var(--color-success)" }}
+                              >
+                                <span>
+                                  Resold to {rs.buyers?.name} · {rs.quantity} kg × ₹{rs.resale_rate}
+                                </span>
+                                <span className="font-semibold">₹{rs.resale_amount}</span>
+                              </div>
+                            ))}
+
+                            {r.status === "Pending Resale" && (
+                              <div className="flex gap-3 mt-1.5">
+                                <button
+                                  onClick={() => router.push(`/dashboard/rejections/${r.id}/resell`)}
+                                  className="text-[12px] font-medium"
+                                  style={{ color: "var(--color-accent)" }}
+                                >
+                                  Resell
+                                </button>
+                                <button
+                                  onClick={() => handleDiscard(r.id)}
+                                  disabled={actionLoading === r.id}
+                                  className="text-[12px] font-medium disabled:opacity-50"
+                                  style={{ color: "var(--color-danger)" }}
+                                >
+                                  {actionLoading === r.id ? "Discarding..." : "Mark as Discarded"}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
