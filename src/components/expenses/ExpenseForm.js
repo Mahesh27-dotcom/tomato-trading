@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Field, PrimaryButton } from "@/components/ui/Shell";
 import TextInput from "@/components/ui/TextInput";
+import { haptic } from "@/lib/haptics";
 
 const EXPENSE_TYPES = ["Transportation", "Labour", "Loading", "Unloading", "Diesel", "Other"];
 
@@ -27,11 +28,7 @@ export default function ExpenseForm({ defaultLoadId = null, onSaved }) {
   useEffect(() => {
     if (!showLoadPicker) return;
     const loadLoads = async () => {
-      const { data } = await supabase
-        .from("loads")
-        .select("id, load_number")
-        .order("load_date", { ascending: false })
-        .limit(100);
+      const { data } = await supabase.from("loads").select("id, load_number").order("load_date", { ascending: false }).limit(100);
       setLoads(data || []);
     };
     loadLoads();
@@ -68,6 +65,7 @@ export default function ExpenseForm({ defaultLoadId = null, onSaved }) {
       return;
     }
 
+    haptic("success");
     setLoading(false);
 
     if (onSaved) {
@@ -85,12 +83,8 @@ export default function ExpenseForm({ defaultLoadId = null, onSaved }) {
           required
           value={expenseType}
           onChange={(e) => setExpenseType(e.target.value)}
-          className="input-base w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
-          style={{
-            color: "var(--color-text)",
-            backgroundColor: "var(--color-bg)",
-            border: "1.5px solid var(--color-border)",
-          }}
+          className="input-base w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none form-field"
+          style={{ color: "var(--color-text)", backgroundColor: "var(--color-bg)", border: "1.5px solid var(--color-border)" }}
         >
           {EXPENSE_TYPES.map((type) => (
             <option key={type} value={type}>
@@ -101,14 +95,7 @@ export default function ExpenseForm({ defaultLoadId = null, onSaved }) {
       </Field>
 
       <Field label="Amount (₹)">
-        <TextInput
-          type="number"
-          inputMode="decimal"
-          required
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="Enter amount"
-        />
+        <TextInput type="number" inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Enter amount" />
       </Field>
 
       <Field label="Expense date">
@@ -117,12 +104,8 @@ export default function ExpenseForm({ defaultLoadId = null, onSaved }) {
           required
           value={expenseDate}
           onChange={(e) => setExpenseDate(e.target.value)}
-          className="input-base w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
-          style={{
-            color: "var(--color-text)",
-            backgroundColor: "var(--color-bg)",
-            border: "1.5px solid var(--color-border)",
-          }}
+          className="input-base w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none form-field"
+          style={{ color: "var(--color-text)", backgroundColor: "var(--color-bg)", border: "1.5px solid var(--color-border)" }}
         />
       </Field>
 
@@ -131,12 +114,8 @@ export default function ExpenseForm({ defaultLoadId = null, onSaved }) {
           <select
             value={loadId}
             onChange={(e) => setLoadId(e.target.value)}
-            className="input-base w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
-            style={{
-              color: "var(--color-text)",
-              backgroundColor: "var(--color-bg)",
-              border: "1.5px solid var(--color-border)",
-            }}
+            className="input-base w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none form-field"
+            style={{ color: "var(--color-text)", backgroundColor: "var(--color-bg)", border: "1.5px solid var(--color-border)" }}
           >
             <option value="">None (day-wise expense)</option>
             {loads.map((l) => (
@@ -154,18 +133,14 @@ export default function ExpenseForm({ defaultLoadId = null, onSaved }) {
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Any additional notes"
           rows={3}
-          className="input-base w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none resize-none"
-          style={{
-            color: "var(--color-text)",
-            backgroundColor: "var(--color-bg)",
-            border: "1.5px solid var(--color-border)",
-          }}
+          className="input-base w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none resize-none form-field"
+          style={{ color: "var(--color-text)", backgroundColor: "var(--color-bg)", border: "1.5px solid var(--color-border)" }}
         />
       </Field>
 
       {error && (
         <p
-          className="text-[13px] rounded-2xl px-4 py-3"
+          className="text-[13px] rounded-2xl px-4 py-3 error-shake"
           style={{ backgroundColor: "var(--color-danger-bg)", color: "var(--color-danger)" }}
         >
           {error}
@@ -175,6 +150,29 @@ export default function ExpenseForm({ defaultLoadId = null, onSaved }) {
       <PrimaryButton type="submit" loading={loading}>
         Save Expense
       </PrimaryButton>
+
+      <style jsx>{`
+        .form-field {
+          transition: box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease-out;
+        }
+        .form-field:focus {
+          box-shadow: 0 0 0 3px rgba(193, 68, 14, 0.12);
+        }
+        .error-shake {
+          animation: shake 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-4px); }
+          75% { transform: translateX(4px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .form-field, .error-shake {
+            animation-duration: 0.001s !important;
+            transition-duration: 0.001s !important;
+          }
+        }
+      `}</style>
     </form>
   );
 }

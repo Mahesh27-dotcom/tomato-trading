@@ -16,21 +16,11 @@ export default function RejectSalePage() {
 
   useEffect(() => {
     const loadData = async () => {
-      const { data: saleData } = await supabase
-        .from("sales")
-        .select("*, buyers(name, market_name)")
-        .eq("id", params.id)
-        .single();
+      const { data: saleData } = await supabase.from("sales").select("*, buyers(name, market_name)").eq("id", params.id).single();
 
-      const { data: existingRejections } = await supabase
-        .from("rejections")
-        .select("rejected_quantity")
-        .eq("sale_id", params.id);
+      const { data: existingRejections } = await supabase.from("rejections").select("rejected_quantity").eq("sale_id", params.id);
 
-      const rejected = (existingRejections || []).reduce(
-        (sum, r) => sum + parseFloat(r.rejected_quantity),
-        0
-      );
+      const rejected = (existingRejections || []).reduce((sum, r) => sum + parseFloat(r.rejected_quantity), 0);
 
       setSale(saleData);
       setAlreadyRejected(rejected);
@@ -61,21 +51,47 @@ export default function RejectSalePage() {
       <div className="max-w-md mx-auto px-4 py-6">
         <button
           onClick={() => router.push(`/dashboard/loads/${sale.load_id}`)}
-          className="text-[14px] font-medium mb-5"
-          style={{ color: "var(--color-accent)" }}
+          className="back-btn text-[14px] font-medium mb-5 inline-flex items-center gap-1"
+          style={{ color: "var(--color-accent)", animation: "fadeSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both" }}
         >
-          ← Back to load
+          <span className="back-arrow">←</span> Back to load
         </button>
 
-        <h1 className="text-[22px] font-semibold mb-1" style={{ color: "var(--color-text)" }}>
+        <h1
+          className="text-[22px] font-semibold mb-1"
+          style={{ color: "var(--color-text)", animation: "fadeSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both" }}
+        >
           Record Rejection
         </h1>
-        <p className="text-[14px] mb-6" style={{ color: "var(--color-text-muted)" }}>
+        <p
+          className="text-[14px] mb-6"
+          style={{ color: "var(--color-text-muted)", animation: "fadeSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both" }}
+        >
           {sale.buyers?.name} · {sale.quantity_sold} kg × ₹{sale.sale_rate}
         </p>
 
-        <RejectionForm sale={sale} alreadyRejected={alreadyRejected} />
+        <div style={{ animation: "fadeSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both" }}>
+          <RejectionForm sale={sale} alreadyRejected={alreadyRejected} />
+        </div>
       </div>
+
+      <style jsx global>{`
+        @keyframes fadeSlideIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .back-btn { transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease-out; }
+        .back-btn:active { transform: scale(0.96); opacity: 0.7; }
+        .back-arrow { display: inline-block; transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1); }
+        @media (hover: hover) { .back-btn:hover .back-arrow { transform: translateX(-3px); } }
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.001s !important;
+            animation-delay: 0s !important;
+            transition-duration: 0.001s !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

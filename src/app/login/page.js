@@ -10,6 +10,7 @@ import {
   PrimaryButton,
 } from "@/components/ui/Shell";
 import TextInput from "@/components/ui/TextInput";
+import { haptic } from "@/lib/haptics";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function LoginPage() {
       });
 
     if (signInError) {
+      haptic("warning");
       setError(signInError.message);
       setLoading(false);
       return;
@@ -51,6 +53,7 @@ export default function LoginPage() {
       .single();
 
     if (profileError || !profile) {
+      haptic("warning");
       setError("Could not verify your account. Please try again.");
       await supabase.auth.signOut();
       setLoading(false);
@@ -58,6 +61,7 @@ export default function LoginPage() {
     }
 
     if (!profile.is_approved) {
+      haptic("warning");
       setError(
         "Your account is still waiting for admin approval. Please check back later."
       );
@@ -74,8 +78,8 @@ export default function LoginPage() {
   return (
     <Shell>
       <BrandHeader
-        eyebrow="Tomato Trading System"
-        title="Welcome back"
+        eyebrow="🍅 Tomato Trading System"
+        title="Welcome back 👋"
         subtitle="Log in to continue"
       />
 
@@ -87,12 +91,12 @@ export default function LoginPage() {
             color: "var(--color-danger)",
           }}
         >
-          Your account is still waiting for admin approval.
+          ⏳ Your account is still waiting for admin approval.
         </div>
       )}
 
       <form onSubmit={handleLogin} className="space-y-5">
-        <Field label="Email">
+        <Field label="📧 Email">
           <TextInput
             type="email"
             required
@@ -102,7 +106,7 @@ export default function LoginPage() {
           />
         </Field>
 
-        <Field label="Password">
+        <Field label="🔒 Password">
           <TextInput
             type="password"
             showToggle
@@ -116,7 +120,7 @@ export default function LoginPage() {
         {error && <ErrorMessage>{error}</ErrorMessage>}
 
         <PrimaryButton type="submit" loading={loading}>
-          Log in
+          Log in →
         </PrimaryButton>
       </form>
 
@@ -140,13 +144,26 @@ export default function LoginPage() {
 function ErrorMessage({ children }) {
   return (
     <p
-      className="text-[13px] rounded-2xl px-4 py-3"
+      className="text-[13px] rounded-2xl px-4 py-3 error-shake"
       style={{
         backgroundColor: "var(--color-danger-bg)",
         color: "var(--color-danger)",
       }}
     >
       {children}
+      <style jsx>{`
+        .error-shake {
+          animation: shake 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-4px); }
+          75% { transform: translateX(4px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .error-shake { animation-duration: 0.001s !important; }
+        }
+      `}</style>
     </p>
   );
 }

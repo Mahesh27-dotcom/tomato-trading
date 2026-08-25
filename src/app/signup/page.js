@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { getPasswordStrength } from "@/utils/passwordStrength";
 import { Shell, BrandHeader, Field, PrimaryButton } from "@/components/ui/Shell";
 import TextInput from "@/components/ui/TextInput";
+import { haptic } from "@/lib/haptics";
 
 const OTP_ENABLED = false;
 
@@ -31,10 +32,12 @@ export default function SignupPage() {
     setError("");
 
     if (password !== confirmPassword) {
+      haptic("warning");
       setError("Passwords do not match.");
       return;
     }
     if (password.length < 6) {
+      haptic("warning");
       setError("Password must be at least 6 characters.");
       return;
     }
@@ -48,6 +51,7 @@ export default function SignupPage() {
     });
 
     if (signUpError) {
+      haptic("warning");
       setError(signUpError.message);
       setLoading(false);
       return;
@@ -59,6 +63,7 @@ export default function SignupPage() {
       return;
     }
 
+    haptic("success");
     setLoading(false);
     setStep("done");
   };
@@ -75,11 +80,13 @@ export default function SignupPage() {
     });
 
     if (verifyError) {
+      haptic("warning");
       setError(verifyError.message);
       setLoading(false);
       return;
     }
 
+    haptic("success");
     setLoading(false);
     setStep("done");
   };
@@ -105,7 +112,7 @@ export default function SignupPage() {
             </svg>
           </div>
           <h1 className="text-[20px] font-semibold mb-2" style={{ color: "var(--color-text)" }}>
-            Account created
+            Account created 🎉
           </h1>
           <p className="text-[14.5px] leading-relaxed mb-8" style={{ color: "var(--color-text-muted)" }}>
             Your account is waiting for admin approval. You'll be able to
@@ -124,8 +131,8 @@ export default function SignupPage() {
     return (
       <Shell>
         <BrandHeader
-          eyebrow="Verification"
-          title="Check your email"
+          eyebrow="🔐 Verification"
+          title="Check your email 📬"
           subtitle={`We sent a 6-digit code to ${email}`}
         />
 
@@ -169,13 +176,13 @@ export default function SignupPage() {
   return (
     <Shell>
       <BrandHeader
-        eyebrow="Tomato Trading System"
-        title="Create your account"
+        eyebrow="🍅 Tomato Trading System"
+        title="Create your account ✨"
         subtitle="Sign up to request staff access"
       />
 
       <form onSubmit={handleSignup} className="space-y-5">
-        <Field label="Full name">
+        <Field label="🧑 Full name">
           <TextInput
             required
             value={fullName}
@@ -184,7 +191,7 @@ export default function SignupPage() {
           />
         </Field>
 
-        <Field label="Email">
+        <Field label="📧 Email">
           <TextInput
             type="email"
             required
@@ -194,7 +201,7 @@ export default function SignupPage() {
           />
         </Field>
 
-        <Field label="Password">
+        <Field label="🔒 Password">
           <TextInput
             type="password"
             showToggle
@@ -230,7 +237,7 @@ export default function SignupPage() {
           )}
         </Field>
 
-        <Field label="Confirm password">
+        <Field label="🔒 Confirm password">
           <TextInput
             type="password"
             showToggle
@@ -255,7 +262,7 @@ export default function SignupPage() {
         {error && <ErrorMessage>{error}</ErrorMessage>}
 
         <PrimaryButton type="submit" loading={loading}>
-          Create account
+          Create account →
         </PrimaryButton>
       </form>
 
@@ -272,10 +279,23 @@ export default function SignupPage() {
 function ErrorMessage({ children }) {
   return (
     <p
-      className="text-[13px] rounded-2xl px-4 py-3"
+      className="text-[13px] rounded-2xl px-4 py-3 error-shake"
       style={{ backgroundColor: "var(--color-danger-bg)", color: "var(--color-danger)" }}
     >
       {children}
+      <style jsx>{`
+        .error-shake {
+          animation: shake 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-4px); }
+          75% { transform: translateX(4px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .error-shake { animation-duration: 0.001s !important; }
+        }
+      `}</style>
     </p>
   );
 }
