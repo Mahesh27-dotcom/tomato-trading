@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
@@ -13,6 +13,25 @@ import TextInput from "@/components/ui/TextInput";
 import { haptic } from "@/lib/haptics";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ backgroundColor: "var(--color-bg)" }}
+    >
+      <p style={{ color: "var(--color-text-muted)" }}>Loading...</p>
+    </div>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
   const supabase = createClient();
   const searchParams = useSearchParams();
